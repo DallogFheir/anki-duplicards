@@ -4,7 +4,7 @@ from anki.collection import Collection
 from anki.decks import DeckId
 from anki.notes import Note, NoteId
 
-from .src.anki_duplicard import AnkiDuplicard
+from .src.anki_duplicard import AnkiDuplicards
 
 
 # begin 🙈
@@ -34,4 +34,4 @@ Collection.add_note = add_note_MONKEY_PATCH  # type: ignore
 # end 🙈
 
 
-AnkiDuplicard().run()
+AnkiDuplicards().run()

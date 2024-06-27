@@ -16,7 +16,7 @@ from .constants import (
 )
 
 
-class AnkiDuplicard:
+class AnkiDuplicards:
     def __init__(self) -> None:
         if mw is None:
             raise RuntimeError(ErrorMessages.NO_MW)

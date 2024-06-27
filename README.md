@@ -1,4 +1,4 @@
-# Anki DupliCard
+# Anki DupliCards
 
 <img src="icon.png" width="50px" >
 
