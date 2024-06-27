@@ -25,19 +25,24 @@ class AnkiDuplicard:
         self._currently_adding = False
 
     def run(self) -> None:
-        gui_hooks.collection_did_load.append(self._add_custom_note_type)
+        if not self._try_add_custom_note_type():
+            gui_hooks.collection_did_load.append(self._add_custom_note_type)
+
         hooks.note_will_be_added.append(self._handle_note_add)
 
     def _add_custom_note_type(self, *_) -> None:
+        self._try_add_custom_note_type()
+
+    def _try_add_custom_note_type(self) -> bool:
         collection = self._mw.col
 
         if collection is None:
-            return
+            return False
 
         models = collection.models
 
         if models.by_name(DUPLICARD_TYPE_NAME) is not None:
-            return
+            return False
 
         basic_card = models.by_name(BASIC_NOTE_TYPE_NAME)
 
@@ -52,6 +57,7 @@ class AnkiDuplicard:
                 duplicard_note_type[field_name] = field
 
         models.add_dict(duplicard_note_type)
+        return True
 
     def _make_search_string(self, text: str) -> str:
         return f'"front:{text}" "note:{DUPLICARD_TYPE_NAME}"'
