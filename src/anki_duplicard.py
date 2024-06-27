@@ -57,7 +57,12 @@ class AnkiDuplicard:
         return f'"front:{text}" "note:{DUPLICARD_TYPE_NAME}"'
 
     def _add_simple_card(
-        self, collection: Collection, deck_id: DeckId, question: str, answer: str
+        self,
+        collection: Collection,
+        deck_id: DeckId,
+        question: str,
+        answer: str,
+        tags: list[str],
     ) -> None:
         models = collection.models
         duplicard_note_type = models.by_name(DUPLICARD_TYPE_NAME)
@@ -67,6 +72,7 @@ class AnkiDuplicard:
 
         note = collection.new_note(duplicard_note_type)
         note.fields = [question, answer]
+        note.tags = tags
 
         self._currently_adding = True
         collection.add_note(note, deck_id)
@@ -83,11 +89,13 @@ class AnkiDuplicard:
         collection.update_card(card)
 
     def _update_existing_cards(
-        self, collection: Collection, ids: list[NoteId], question: str, answer: str
+        self,
+        collection: Collection,
+        ids: list[NoteId],
+        question: str,
+        answer: str,
+        tags: list[str],
     ) -> None:
-        scheduler = collection.sched
-        today = scheduler.today
-
         for id in ids:
             other_note = collection.get_note(id)
             other_question = other_note.fields[0]
@@ -95,6 +103,7 @@ class AnkiDuplicard:
             answer_to_add = answer if question == other_question else question
 
             other_note.fields[1] += f"{SEPARATOR}{answer_to_add}"
+            other_note.tags += tags
 
             card = other_note.cards()[0]
             self._forget_card(collection, card)
@@ -115,6 +124,7 @@ class AnkiDuplicard:
             return
 
         question, answer = note.fields
+        tags = note.tags
 
         same_questions = collection.find_notes(self._make_search_string(question))
         same_answers = collection.find_notes(self._make_search_string(answer))
@@ -123,11 +133,11 @@ class AnkiDuplicard:
             *collection.find_notes(self._make_search_string(question)),
             *collection.find_notes(self._make_search_string(answer)),
         ]
-        self._update_existing_cards(collection, same_ids, question, answer)
+        self._update_existing_cards(collection, same_ids, question, answer, tags)
 
         if not same_questions:
-            self._add_simple_card(collection, deck_id, question, answer)
+            self._add_simple_card(collection, deck_id, question, answer, tags)
         if not same_answers:
-            self._add_simple_card(collection, deck_id, answer, question)
+            self._add_simple_card(collection, deck_id, answer, question, tags)
 
         collection._prevent_add_note = True  # type: ignore
