@@ -34,3 +34,11 @@ The add-on only merges the cards of the note type _X-DupliCard_. This type will 
 This add-on monkey-patches the `Collection.add_note` method. It should not affect other cards, but if it does, please report an issue.
 
 A drawback of this add-on is that it creates 2 separate basic cards for each word-meaning pair, so if you make a typo, for example, you have to correct both cards.
+
+## Changelog
+
+- 1.0.1 [current]
+  - notes preserve tags now
+  - X-DupliCard note type is added on installation
+  - fixed cursor jumping to the next field while adding a card
+- 1.0.0
