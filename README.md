@@ -37,7 +37,9 @@ A drawback of this add-on is that it creates 2 separate basic cards for each wor
 
 ## Changelog
 
-- 1.0.1 [current]
+- 1.0.2 [current]
+  - now only cards in the same deck as the added card are updated
+- 1.0.1
   - notes preserve tags now
   - X-DupliCard note type is added on installation
   - fixed cursor jumping to the next field while adding a card

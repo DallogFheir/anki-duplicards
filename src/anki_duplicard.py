@@ -59,8 +59,8 @@ class AnkiDuplicards:
         models.add_dict(duplicard_note_type)
         return True
 
-    def _make_search_string(self, text: str) -> str:
-        return f'"front:{text}" "note:{DUPLICARD_TYPE_NAME}"'
+    def _make_search_string(self, text: str, deck_name: str) -> str:
+        return f'"front:{text}" "note:{DUPLICARD_TYPE_NAME}" "deck:{deck_name}"'
 
     def _add_simple_card(
         self,
@@ -124,6 +124,11 @@ class AnkiDuplicards:
 
         collection._prevent_add_note = False  # type: ignore
 
+        deck = collection.decks.get(deck_id)
+        if deck is None:
+            return
+        deck_name = deck["name"]
+
         note_type = note.note_type()
 
         if note_type is None or note_type[NOTE_TYPE_NAME_FIELD] != DUPLICARD_TYPE_NAME:
@@ -132,12 +137,16 @@ class AnkiDuplicards:
         question, answer = note.fields
         tags = note.tags
 
-        same_questions = collection.find_notes(self._make_search_string(question))
-        same_answers = collection.find_notes(self._make_search_string(answer))
+        same_questions = collection.find_notes(
+            self._make_search_string(question, deck_name)
+        )
+        same_answers = collection.find_notes(
+            self._make_search_string(answer, deck_name)
+        )
 
         same_ids = [
-            *collection.find_notes(self._make_search_string(question)),
-            *collection.find_notes(self._make_search_string(answer)),
+            *collection.find_notes(self._make_search_string(question, deck_name)),
+            *collection.find_notes(self._make_search_string(answer, deck_name)),
         ]
         self._update_existing_cards(collection, same_ids, question, answer, tags)
 
