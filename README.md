@@ -27,7 +27,7 @@ Adding (_piquer_, _to sting_) would update the back of the second card to _to st
 
 ## How to use
 
-The add-on only merges the cards of the note type _X-DupliCard_. This type will be added on startup, if it doesn't exist. Functionally it's the same as the basic card.
+The add-on only merges the cards of the note type _X-DupliCard_. This type will be added on startup, if it doesn't exist. Functionally it's the same as the basic card, except it also has the `Type` field, which can be used to distinguish the "sides" of the card. The type can be either `FB` (front-back) or `BF` (back-front).
 
 ## Warnings
 
@@ -37,7 +37,9 @@ A drawback of this add-on is that it creates 2 separate basic cards for each wor
 
 ## Changelog
 
-- 1.0.2 [current]
+- 2.0.0 [current]
+  - added `Type` field to the card
+- 1.0.2
   - now only cards in the same deck as the added card are updated
 - 1.0.1
   - notes preserve tags now

@@ -1,10 +1,22 @@
+from enum import Enum
+
+
 BASIC_NOTE_TYPE_NAME = "Basic"
 DUPLICARD_TYPE_NAME = "X-DupliCard"
 
 SEPARATOR = "<br />"
 
 NOTE_TYPE_NAME_FIELD = "name"
+NOTE_TYPE_FIELDS_FIELD = "flds"
+NOTE_TYPE_FIELDS_NAME_FIELD = "name"
+NOTE_TYPE_FIELDS_ORDER_FIELD = "ord"
+NOTE_TYPE_FIELDS_TYPE_NAME = "Type"
 NOTE_TYPE_FIELDS_TO_IGNORE = ("id", NOTE_TYPE_NAME_FIELD)
+
+
+class DuplicardTypeField(Enum):
+    FrontToBack = "FB"
+    BackToFront = "BF"
 
 
 class ErrorMessages:

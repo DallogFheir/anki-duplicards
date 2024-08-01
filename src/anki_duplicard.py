@@ -9,9 +9,14 @@ from aqt import gui_hooks, mw
 from .constants import (
     BASIC_NOTE_TYPE_NAME,
     DUPLICARD_TYPE_NAME,
+    NOTE_TYPE_FIELDS_FIELD,
+    NOTE_TYPE_FIELDS_NAME_FIELD,
+    NOTE_TYPE_FIELDS_ORDER_FIELD,
     NOTE_TYPE_FIELDS_TO_IGNORE,
+    NOTE_TYPE_FIELDS_TYPE_NAME,
     NOTE_TYPE_NAME_FIELD,
     SEPARATOR,
+    DuplicardTypeField,
     ErrorMessages,
 )
 
@@ -54,6 +59,18 @@ class AnkiDuplicards:
 
         for field_name, field in basic_card.items():
             if field_name not in NOTE_TYPE_FIELDS_TO_IGNORE:
+                if field_name == NOTE_TYPE_FIELDS_FIELD:
+                    max_order = max(f[NOTE_TYPE_FIELDS_ORDER_FIELD] for f in field)
+                    new_order = max_order + 1
+
+                    field_template = {**field[-1]}
+                    field_template[NOTE_TYPE_FIELDS_NAME_FIELD] = (
+                        NOTE_TYPE_FIELDS_TYPE_NAME
+                    )
+                    field_template[NOTE_TYPE_FIELDS_ORDER_FIELD] = new_order
+
+                    field.append(field_template)
+
                 duplicard_note_type[field_name] = field
 
         models.add_dict(duplicard_note_type)
@@ -68,6 +85,7 @@ class AnkiDuplicards:
         deck_id: DeckId,
         question: str,
         answer: str,
+        type: DuplicardTypeField,
         tags: list[str],
     ) -> None:
         models = collection.models
@@ -77,7 +95,7 @@ class AnkiDuplicards:
             raise RuntimeError(ErrorMessages.DID_NOT_FIND_NOTE_TYPE)
 
         note = collection.new_note(duplicard_note_type)
-        note.fields = [question, answer]
+        note.fields = [question, answer, type.value]
         note.tags = tags
 
         self._currently_adding = True
@@ -134,7 +152,7 @@ class AnkiDuplicards:
         if note_type is None or note_type[NOTE_TYPE_NAME_FIELD] != DUPLICARD_TYPE_NAME:
             return
 
-        question, answer = note.fields
+        question, answer, _ = note.fields
         tags = note.tags
 
         same_questions = collection.find_notes(
@@ -151,8 +169,22 @@ class AnkiDuplicards:
         self._update_existing_cards(collection, same_ids, question, answer, tags)
 
         if not same_questions:
-            self._add_simple_card(collection, deck_id, question, answer, tags)
+            self._add_simple_card(
+                collection,
+                deck_id,
+                question,
+                answer,
+                DuplicardTypeField.FrontToBack,
+                tags,
+            )
         if not same_answers:
-            self._add_simple_card(collection, deck_id, answer, question, tags)
+            self._add_simple_card(
+                collection,
+                deck_id,
+                answer,
+                question,
+                DuplicardTypeField.BackToFront,
+                tags,
+            )
 
         collection._prevent_add_note = True  # type: ignore
