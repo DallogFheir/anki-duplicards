@@ -1,3 +1,5 @@
+import re
+
 import anki.consts
 import anki.hooks as hooks
 from anki.cards import Card
@@ -9,9 +11,18 @@ from aqt import gui_hooks, mw
 from .constants import (
     BASIC_NOTE_TYPE_NAME,
     DUPLICARD_TYPE_NAME,
+    NOTE_TYPE_FIELDS_FIELD,
+    NOTE_TYPE_FIELDS_NAME_FIELD,
+    NOTE_TYPE_FIELDS_ORDER_FIELD,
     NOTE_TYPE_FIELDS_TO_IGNORE,
+    NOTE_TYPE_FIELDS_TYPE_NAME,
     NOTE_TYPE_NAME_FIELD,
     SEPARATOR,
+    SEPARATOR_REGEX,
+    SORTER_CONFIG_KEY,
+    SORTER_FUNCTION_BODY_TEMPLATE,
+    SORTER_FUNCTION_NAME,
+    DuplicardTypeField,
     ErrorMessages,
 )
 
@@ -22,6 +33,10 @@ class AnkiDuplicards:
             raise RuntimeError(ErrorMessages.NO_MW)
 
         self._mw = mw
+
+        config = mw.addonManager.getConfig(__name__)
+        self.sorter = self._parse_sorter(config[SORTER_CONFIG_KEY])
+
         self._currently_adding = False
 
     def run(self) -> None:
@@ -29,6 +44,20 @@ class AnkiDuplicards:
             gui_hooks.collection_did_load.append(self._add_custom_note_type)
 
         hooks.note_will_be_added.append(self._handle_note_add)
+
+    def _parse_sorter(self, sorter_code: str) -> None:
+        sorter_code_lines = sorter_code.split("\n")
+        sorter_code_with_indent = "\n".join(f"    {line}" for line in sorter_code_lines)
+
+        sorter_function_body = SORTER_FUNCTION_BODY_TEMPLATE.format(
+            sorter_code_with_indent
+        )
+
+        local_vars = {}
+
+        exec(sorter_function_body, {}, local_vars)
+
+        self._sorter = local_vars[SORTER_FUNCTION_NAME]
 
     def _add_custom_note_type(self, *_) -> None:
         self._try_add_custom_note_type()
@@ -54,6 +83,18 @@ class AnkiDuplicards:
 
         for field_name, field in basic_card.items():
             if field_name not in NOTE_TYPE_FIELDS_TO_IGNORE:
+                if field_name == NOTE_TYPE_FIELDS_FIELD:
+                    max_order = max(f[NOTE_TYPE_FIELDS_ORDER_FIELD] for f in field)
+                    new_order = max_order + 1
+
+                    field_template = {**field[-1]}
+                    field_template[NOTE_TYPE_FIELDS_NAME_FIELD] = (
+                        NOTE_TYPE_FIELDS_TYPE_NAME
+                    )
+                    field_template[NOTE_TYPE_FIELDS_ORDER_FIELD] = new_order
+
+                    field.append(field_template)
+
                 duplicard_note_type[field_name] = field
 
         models.add_dict(duplicard_note_type)
@@ -68,6 +109,7 @@ class AnkiDuplicards:
         deck_id: DeckId,
         question: str,
         answer: str,
+        type: DuplicardTypeField,
         tags: list[str],
     ) -> None:
         models = collection.models
@@ -77,7 +119,7 @@ class AnkiDuplicards:
             raise RuntimeError(ErrorMessages.DID_NOT_FIND_NOTE_TYPE)
 
         note = collection.new_note(duplicard_note_type)
-        note.fields = [question, answer]
+        note.fields = [question, answer, type.value]
         note.tags = tags
 
         self._currently_adding = True
@@ -108,7 +150,11 @@ class AnkiDuplicards:
 
             answer_to_add = answer if question == other_question else question
 
-            other_note.fields[1] += f"{SEPARATOR}{answer_to_add}"
+            current_answers = re.split(SEPARATOR_REGEX, other_note.fields[1])
+            current_answers.append(answer_to_add)
+            current_answers.sort(key=self._sorter)
+
+            other_note.fields[1] = SEPARATOR.join(current_answers)
             other_note.tags += tags
 
             card = other_note.cards()[0]
@@ -134,7 +180,7 @@ class AnkiDuplicards:
         if note_type is None or note_type[NOTE_TYPE_NAME_FIELD] != DUPLICARD_TYPE_NAME:
             return
 
-        question, answer = note.fields
+        question, answer, _ = note.fields
         tags = note.tags
 
         same_questions = collection.find_notes(
@@ -151,8 +197,22 @@ class AnkiDuplicards:
         self._update_existing_cards(collection, same_ids, question, answer, tags)
 
         if not same_questions:
-            self._add_simple_card(collection, deck_id, question, answer, tags)
+            self._add_simple_card(
+                collection,
+                deck_id,
+                question,
+                answer,
+                DuplicardTypeField.FrontToBack,
+                tags,
+            )
         if not same_answers:
-            self._add_simple_card(collection, deck_id, answer, question, tags)
+            self._add_simple_card(
+                collection,
+                deck_id,
+                answer,
+                question,
+                DuplicardTypeField.BackToFront,
+                tags,
+            )
 
         collection._prevent_add_note = True  # type: ignore
