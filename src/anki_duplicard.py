@@ -1,3 +1,5 @@
+import re
+
 import anki.consts
 import anki.hooks as hooks
 from anki.cards import Card
@@ -16,6 +18,10 @@ from .constants import (
     NOTE_TYPE_FIELDS_TYPE_NAME,
     NOTE_TYPE_NAME_FIELD,
     SEPARATOR,
+    SEPARATOR_REGEX,
+    SORTER_CONFIG_KEY,
+    SORTER_FUNCTION_BODY_TEMPLATE,
+    SORTER_FUNCTION_NAME,
     DuplicardTypeField,
     ErrorMessages,
 )
@@ -27,6 +33,10 @@ class AnkiDuplicards:
             raise RuntimeError(ErrorMessages.NO_MW)
 
         self._mw = mw
+
+        config = mw.addonManager.getConfig(__name__)
+        self.sorter = self._parse_sorter(config[SORTER_CONFIG_KEY])
+
         self._currently_adding = False
 
     def run(self) -> None:
@@ -34,6 +44,20 @@ class AnkiDuplicards:
             gui_hooks.collection_did_load.append(self._add_custom_note_type)
 
         hooks.note_will_be_added.append(self._handle_note_add)
+
+    def _parse_sorter(self, sorter_code: str) -> None:
+        sorter_code_lines = sorter_code.split("\n")
+        sorter_code_with_indent = "\n".join(f"    {line}" for line in sorter_code_lines)
+
+        sorter_function_body = SORTER_FUNCTION_BODY_TEMPLATE.format(
+            sorter_code_with_indent
+        )
+
+        local_vars = {}
+
+        exec(sorter_function_body, {}, local_vars)
+
+        self._sorter = local_vars[SORTER_FUNCTION_NAME]
 
     def _add_custom_note_type(self, *_) -> None:
         self._try_add_custom_note_type()
@@ -126,7 +150,11 @@ class AnkiDuplicards:
 
             answer_to_add = answer if question == other_question else question
 
-            other_note.fields[1] += f"{SEPARATOR}{answer_to_add}"
+            current_answers = re.split(SEPARATOR_REGEX, other_note.fields[1])
+            current_answers.append(answer_to_add)
+            current_answers.sort(key=self._sorter)
+
+            other_note.fields[1] = SEPARATOR.join(current_answers)
             other_note.tags += tags
 
             card = other_note.cards()[0]
